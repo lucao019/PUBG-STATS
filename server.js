@@ -8,6 +8,15 @@ const PORT = 5051;
 const API_KEY = process.env.PUBG_API_KEY;
 const PLAYER_NAME = "lucao99999999999";
 
+/* =========================================================
+   CACHE
+========================================================= */
+
+let cacheHoje = null;
+let cacheAtualizando = false;
+
+const CACHE_TEMPO = 60 * 1000; // 60 segundos
+const INTERVALO_ATUALIZACAO = 60 * 1000; // 60 segundos
 const pubgHeaders = {
     Authorization: `Bearer ${API_KEY}`,
     Accept: "application/vnd.api+json"
@@ -121,7 +130,7 @@ app.get("/", (req, res) => {
    API DE HOJE
 ========================================================= */
 
-app.get("/api/hoje", async (req, res) => {
+async function atualizarCache() {
 
     try {
 
@@ -500,7 +509,9 @@ app.get("/api/hoje", async (req, res) => {
         );
 
 
-        res.json(resultado);
+                cacheHoje = resultado;
+
+        return resultado;
 
     }
 
@@ -512,7 +523,81 @@ app.get("/api/hoje", async (req, res) => {
         );
 
 
-        res.status(500).json({
+        throw error;
+
+    }
+
+}
+
+/* =========================================================
+   API DE HOJE - CACHE
+========================================================= */
+
+app.get("/api/hoje", async (req, res) => {
+
+    try {
+
+        const agora = Date.now();
+
+        const cacheValido =
+            cacheHoje &&
+            (agora - new Date(cacheHoje.atualizadoEm).getTime()) < CACHE_TEMPO;
+
+        // Cache ainda é recente
+        if (cacheValido) {
+
+            console.log("CACHE HIT");
+
+            return res.json(cacheHoje);
+        }
+
+        // Impede duas atualizações simultâneas
+        if (cacheAtualizando) {
+
+            console.log("CACHE ATUALIZANDO");
+
+            if (cacheHoje) {
+                return res.json(cacheHoje);
+            }
+
+            return res.status(503).json({
+                erro: "Estatisticas sendo carregadas."
+            });
+        }
+
+        cacheAtualizando = true;
+
+        try {
+
+            console.log("CACHE MISS - consultando PUBG API");
+
+            const resultado = await atualizarCache();
+
+            return res.json(resultado);
+
+        } finally {
+
+            cacheAtualizando = false;
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "ERRO API:",
+            error.message
+        );
+
+        // Se a PUBG API falhar, ainda podemos entregar
+        // o último resultado conhecido.
+        if (cacheHoje) {
+
+            console.log("USANDO CACHE ANTERIOR");
+
+            return res.json(cacheHoje);
+        }
+
+        return res.status(500).json({
             erro: error.message
         });
 
@@ -520,6 +605,43 @@ app.get("/api/hoje", async (req, res) => {
 
 });
 
+
+/* =========================================================
+   MOTOR DE ATUALIZACAO AUTOMATICA
+========================================================= */
+
+async function atualizarAutomaticamente() {
+
+    if (cacheAtualizando) {
+        console.log("ATUALIZACAO IGNORADA - ja existe uma em andamento");
+        return;
+    }
+
+    cacheAtualizando = true;
+
+    try {
+
+        console.log("");
+        console.log("AUTO UPDATE - verificando PUBG");
+
+        await atualizarCache();
+
+        console.log("AUTO UPDATE - concluido");
+
+    } catch (error) {
+
+        console.error(
+            "AUTO UPDATE ERRO:",
+            error.message
+        );
+
+    } finally {
+
+        cacheAtualizando = false;
+
+    }
+
+}
 
 /* =========================================================
    SERVIDOR
@@ -542,5 +664,14 @@ app.listen(PORT, () => {
     );
 
     console.log("============================");
+
+        // Primeira atualização assim que o servidor iniciar
+    atualizarAutomaticamente();
+
+    // Depois atualiza sozinho
+    setInterval(
+        atualizarAutomaticamente,
+        INTERVALO_ATUALIZACAO
+    );
 
 });
