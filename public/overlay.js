@@ -84,6 +84,20 @@ async function atualizarStats() {
             statsAnteriores?.partidas
         );
 
+        const onlineAtual =
+    Number(dados.jogadoresOnline || 0);
+
+const onlineAnterior =
+    statsAnteriores?.jogadoresOnline;
+
+atualizarElemento(
+    "online",
+    onlineAtual.toLocaleString("pt-BR"),
+    onlineAnterior !== undefined
+        ? Number(onlineAnterior).toLocaleString("pt-BR")
+        : undefined
+);
+
 
         atualizarElemento(
             "arma",
@@ -106,11 +120,17 @@ async function atualizarStats() {
             damage:
                 dados.damage,
 
+            jogadoresOnline:
+                dados.jogadoresOnline,
+
             partidas:
                 dados.partidas,
 
             armaPreferida:
                 dados.armaPreferida
+                
+
+
 
         };
 

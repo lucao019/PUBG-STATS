@@ -14,7 +14,12 @@ const PLAYER_NAME = "lucao99999999999";
 
 let cacheHoje = null;
 let cacheAtualizando = false;
+const partidasProcessadas = new Map();
+let dataCache = null;
+let jogadoresOnline = 0;
+let ultimaAtualizacaoSteam = 0;
 
+const CACHE_STEAM_TEMPO = 5 * 60 * 1000;
 const CACHE_TEMPO = 60 * 1000; // 60 segundos
 const INTERVALO_ATUALIZACAO = 60 * 1000; // 60 segundos
 const pubgHeaders = {
@@ -91,6 +96,74 @@ function dataBrasil(data) {
 
 }
 
+/* =========================================================
+   JOGADORES ONLINE - STEAM
+========================================================= */
+
+async function atualizarJogadoresSteam() {
+
+    const agora = Date.now();
+
+    const cacheSteamValido =
+        jogadoresOnline > 0 &&
+        (agora - ultimaAtualizacaoSteam) < CACHE_STEAM_TEMPO;
+
+    if (cacheSteamValido) {
+        console.log(
+            "STEAM CACHE:",
+            jogadoresOnline,
+            "jogadores"
+        );
+
+        return jogadoresOnline;
+    }
+
+    try {
+
+        console.log("STEAM - consultando jogadores online");
+
+        const response = await fetch(
+            "https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=578080"
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                `Steam API HTTP ${response.status}`
+            );
+        }
+
+        const json = await response.json();
+
+        const quantidade =
+            Number(json.response?.player_count);
+
+        if (!Number.isFinite(quantidade)) {
+            throw new Error(
+                "Steam retornou player_count invalido"
+            );
+        }
+
+        jogadoresOnline = quantidade;
+        ultimaAtualizacaoSteam = agora;
+
+        console.log(
+            "STEAM ONLINE:",
+            jogadoresOnline
+        );
+
+        return jogadoresOnline;
+
+    } catch (error) {
+
+        console.error(
+            "STEAM ERRO:",
+            error.message
+        );
+
+        // Se a Steam falhar, mantém o último valor conhecido.
+        return jogadoresOnline;
+    }
+}
 
 /* =========================================================
    FRONT-END
@@ -187,6 +260,22 @@ async function atualizarCache() {
         const hoje =
             dataBrasil(new Date());
 
+                    /* =================================================
+           RESET DIARIO
+        ================================================= */
+
+        if (dataCache !== hoje) {
+
+            console.log(
+                "NOVO DIA - limpando cache de partidas"
+            );
+
+            partidasProcessadas.clear();
+            cacheHoje = null;
+            dataCache = hoje;
+        }
+        
+
 
         /* =================================================
            2. CONTADORES
@@ -207,7 +296,17 @@ async function atualizarCache() {
 
         for (const matchId of matchIds) {
 
-            const matchResponse = await fetch(
+    if (partidasProcessadas.has(matchId)) {
+
+        console.log(
+            "Partida em cache:",
+            matchId
+        );
+
+        continue;
+    }
+
+    const matchResponse = await fetch(
                 `https://api.pubg.com/shards/steam/matches/${matchId}`,
                 {
                     headers: {
@@ -262,6 +361,15 @@ async function atualizarCache() {
                4. STATS DA PARTIDA
             ================================================= */
 
+            const dadosPartida = {
+                kills: 0,
+                damage: 0,
+                dbnos: 0,
+                tempo: 0,
+                armas: {}
+            };
+
+
             const participant =
                 match.included.find(
                     item =>
@@ -276,23 +384,10 @@ async function atualizarCache() {
                     participant.attributes.stats;
 
 
-                partidas++;
-
-
-                kills +=
-                    stats.kills || 0;
-
-
-                damage +=
-                    stats.damageDealt || 0;
-
-
-                dbnos +=
-                    stats.DBNOs || 0;
-
-
-                tempo +=
-                    stats.timeSurvived || 0;
+                                dadosPartida.kills = stats.kills || 0;
+                dadosPartida.damage = stats.damageDealt || 0;
+                dadosPartida.dbnos = stats.DBNOs || 0;
+                dadosPartida.tempo = stats.timeSurvived || 0;
 
             }
 
@@ -393,10 +488,60 @@ async function atualizarCache() {
 
                 armas[arma]++;
 
+                                if (!dadosPartida.armas[arma]) {
+                    dadosPartida.armas[arma] = 0;
+                }
+
+                dadosPartida.armas[arma]++;
+
             }
+
+            partidasProcessadas.set(
+    matchId,
+    dadosPartida
+);
+
+console.log(
+    "Partida salva no cache:",
+    matchId
+);
 
         }
 
+
+               /* =================================================
+           6.5 RECONSTRUIR TOTAIS PELO CACHE
+        ================================================= */
+
+        partidas = 0;
+        kills = 0;
+        damage = 0;
+        dbnos = 0;
+        tempo = 0;
+
+        // Limpa contagem global de armas
+        for (const arma of Object.keys(armas)) {
+            delete armas[arma];
+        }
+
+        for (const dados of partidasProcessadas.values()) {
+
+            partidas++;
+
+            kills += dados.kills;
+            damage += dados.damage;
+            dbnos += dados.dbnos;
+            tempo += dados.tempo;
+
+            for (const [arma, quantidade] of Object.entries(dados.armas)) {
+
+                if (!armas[arma]) {
+                    armas[arma] = 0;
+                }
+
+                armas[arma] += quantidade;
+            }
+        } 
 
         /* =================================================
            7. ARMA PREFERIDA
@@ -440,15 +585,17 @@ async function atualizarCache() {
 
         const resultado = {
 
-            data:
-                hoje,
+    data:
+        hoje,
 
-            partidas,
+    partidas,
 
-            kills,
+    kills,
 
-            damage:
-                Math.round(damage),
+    jogadoresOnline,
+
+    damage:
+        Math.round(damage),
 
             dbnos,
 
@@ -624,9 +771,13 @@ async function atualizarAutomaticamente() {
         console.log("");
         console.log("AUTO UPDATE - verificando PUBG");
 
-        await atualizarCache();
+        await atualizarJogadoresSteam();
 
-        console.log("AUTO UPDATE - concluido");
+await atualizarCache();
+
+
+
+console.log("AUTO UPDATE - concluido");
 
     } catch (error) {
 
