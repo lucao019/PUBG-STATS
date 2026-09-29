@@ -1,0 +1,391 @@
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    background: transparent;
+}
+
+
+/* ==============================
+   OVERLAY
+============================== */
+
+.overlay {
+    display: flex;
+    align-items: center;
+
+    gap: 60px;
+
+    width: max-content;
+
+    padding: 35px 50px;
+}
+
+
+/* ==============================
+   STAT
+============================== */
+
+.stat {
+    position: relative;
+
+    min-width: 130px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    isolation: isolate;
+}
+
+
+/* ==============================
+   LABEL
+============================== */
+
+.label {
+    position: relative;
+    z-index: 5;
+
+    margin-bottom: -2px;
+
+    font-family:
+        Georgia,
+        "Times New Roman",
+        serif;
+
+    font-size: 15px;
+    font-weight: 900;
+
+    letter-spacing: 4px;
+
+    color: #bcbcbc;
+
+    transform:
+        scaleY(1.2)
+        skewX(-5deg);
+
+    text-shadow:
+        2px 2px 2px #000,
+        -2px -2px 2px #000,
+        0 0 8px #000;
+}
+
+
+/* ==============================
+   NÚMERO / ARMA
+============================== */
+
+.stat strong {
+    position: relative;
+    z-index: 5;
+
+    font-family:
+        Georgia,
+        "Times New Roman",
+        serif;
+
+    font-size: 43px;
+    font-weight: 900;
+
+    letter-spacing: -3px;
+
+    color: #ededed;
+
+    transform: scaleY(1.25);
+
+    text-shadow:
+        2px 2px 0 #050505,
+        -2px -2px 0 #050505,
+        2px -2px 0 #050505,
+        -2px 2px 0 #050505,
+
+        0 4px 4px #000,
+        0 0 10px #000,
+        0 0 18px rgba(0, 0, 0, .9);
+}
+
+
+/* ==============================
+   ARMA
+============================== */
+
+.weapon {
+    min-width: 170px;
+}
+
+.weapon strong {
+    font-size: 36px;
+
+    letter-spacing: -2px;
+}
+
+.weapon small {
+    position: relative;
+    z-index: 5;
+
+    margin-top: 3px;
+
+    font-family: Georgia, serif;
+
+    font-size: 11px;
+    font-weight: bold;
+
+    letter-spacing: 2px;
+
+    color: #999;
+
+    text-shadow:
+        1px 1px 2px #000,
+        0 0 5px #000;
+}
+
+
+/* ==============================
+   FANTASMA
+============================== */
+
+.ghost {
+    position: absolute;
+
+    z-index: 1;
+
+    left: 50%;
+    bottom: -17px;
+
+    width: 145px;
+    height: 100px;
+
+    transform:
+        translateX(-50%);
+
+    pointer-events: none;
+
+    background:
+        radial-gradient(
+            ellipse at 50% 75%,
+            rgba(0, 0, 0, .95) 0%,
+            rgba(0, 0, 0, .80) 20%,
+            rgba(0, 0, 0, .40) 43%,
+            rgba(0, 0, 0, 0) 72%
+        );
+
+    filter: blur(7px);
+
+    animation:
+        ghostBreath
+        4.5s ease-in-out infinite;
+}
+
+
+/* tentáculo esquerdo */
+
+.ghost::before {
+    content: "";
+
+    position: absolute;
+
+    left: 25px;
+    bottom: 15px;
+
+    width: 35px;
+    height: 75px;
+
+    background:
+        linear-gradient(
+            to top,
+            rgba(0, 0, 0, .9),
+            rgba(0, 0, 0, .55),
+            transparent
+        );
+
+    border-radius:
+        70% 20% 60% 30%;
+
+    filter: blur(8px);
+
+    transform:
+        rotate(-18deg);
+
+    animation:
+        ghostLeft
+        3.8s ease-in-out infinite;
+}
+
+
+/* tentáculo direito */
+
+.ghost::after {
+    content: "";
+
+    position: absolute;
+
+    right: 20px;
+    bottom: 10px;
+
+    width: 32px;
+    height: 85px;
+
+    background:
+        linear-gradient(
+            to top,
+            rgba(0, 0, 0, .9),
+            rgba(0, 0, 0, .45),
+            transparent
+        );
+
+    border-radius:
+        20% 70% 30% 60%;
+
+    filter: blur(9px);
+
+    transform:
+        rotate(17deg);
+
+    animation:
+        ghostRight
+        4.2s ease-in-out infinite;
+}
+
+
+/* ==============================
+   IMPACTO QUANDO MUDA
+============================== */
+
+.stat strong.impact {
+    animation:
+        impact
+        .65s cubic-bezier(.2, .8, .2, 1);
+}
+
+
+/* ==============================
+   ANIMAÇÕES DO FANTASMA
+============================== */
+
+@keyframes ghostBreath {
+
+    0%,
+    100% {
+        transform:
+            translateX(-50%)
+            scaleX(.9)
+            scaleY(.8);
+
+        opacity: .55;
+    }
+
+    50% {
+        transform:
+            translateX(-50%)
+            translateY(-10px)
+            scaleX(1.15)
+            scaleY(1.2);
+
+        opacity: .95;
+    }
+}
+
+
+@keyframes ghostLeft {
+
+    0%,
+    100% {
+        transform:
+            translateY(8px)
+            rotate(-18deg)
+            scaleX(.8)
+            scaleY(.8);
+
+        opacity: .4;
+    }
+
+    50% {
+        transform:
+            translateY(-22px)
+            translateX(-8px)
+            rotate(5deg)
+            scaleX(1.1)
+            scaleY(1.35);
+
+        opacity: .85;
+    }
+}
+
+
+@keyframes ghostRight {
+
+    0%,
+    100% {
+        transform:
+            translateY(10px)
+            rotate(17deg)
+            scaleX(.8)
+            scaleY(.75);
+
+        opacity: .45;
+    }
+
+    50% {
+        transform:
+            translateY(-28px)
+            translateX(7px)
+            rotate(-8deg)
+            scaleX(1.1)
+            scaleY(1.4);
+
+        opacity: .9;
+    }
+}
+
+
+/* ==============================
+   MUDANÇA DE STAT
+============================== */
+
+@keyframes impact {
+
+    0% {
+        transform:
+            scaleY(1.25)
+            scale(1);
+    }
+
+    25% {
+        transform:
+            scaleY(1.4)
+            scale(1.35);
+
+        filter: blur(1px);
+    }
+
+    50% {
+        transform:
+            scaleY(1.3)
+            scale(.9);
+    }
+
+    75% {
+        transform:
+            scaleY(1.25)
+            scale(1.08);
+    }
+
+    100% {
+        transform:
+            scaleY(1.25)
+            scale(1);
+
+        filter: none;
+    }
+}
